@@ -1,0 +1,17 @@
+# GRAPE Recorder - HF Time Signal Data Products
+# Core dependencies
+
+numpy>=1.21.0
+scipy>=1.7.0
+matplotlib>=3.5.0
+h5py>=3.0.0
+
+# Upload functionality
+paramiko>=2.9.0
+
+# Digital RF (optional but recommended)
+digital_rf>=2.6.0
+
+# Core timing analysis (from hf-timestd)
+# Install with: pip install -e /path/to/hf-timestd
+# Or when published: hf-timestd>=0.1.0
