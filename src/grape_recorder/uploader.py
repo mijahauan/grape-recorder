@@ -10,7 +10,7 @@ import time
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone, timedelta
 import json
@@ -37,7 +37,12 @@ def load_upload_config_from_toml(toml_config: Dict, path_resolver=None) -> Dict:
         Dict suitable for UploadManager initialization
     """
     uploader = toml_config.get('uploader', {})
+    if uploader is None:
+        uploader = {}
+        
     station = toml_config.get('station', {})
+    if station is None:
+        station = {}
     
     # Determine protocol
     protocol = uploader.get('protocol', 'sftp')
@@ -386,21 +391,32 @@ class SFTPUpload(UploadProtocol):
 class UploadManager:
     """Manages upload queue and retry logic"""
     
-    def __init__(self, config: Dict, storage_manager):
+    def __init__(
+        self, 
+        config: Dict, 
+        storage_manager: Optional[Any] = None,
+        on_success_callback: Optional[callable] = None
+    ):
         """
         Initialize upload manager
         
         Args:
-            config: Upload configuration
-            storage_manager: StorageManager instance
+            config: Uploader configuration
+            storage_manager: Optional storage manager for status updates
+            on_success_callback: Optional callback(task) to run after successful upload
         """
         self.config = config
         self.storage_manager = storage_manager
-        self.protocol = self._create_protocol()
-        self.max_retries = config.get('max_retries', 5)
+        self.on_success_callback = on_success_callback
+        
+        # Retry settings
+        self.max_retries = config.get('max_retries', 3)
         self.retry_backoff_base = config.get('retry_backoff_base', 2)
         self.queue_file = Path(config.get('queue_file', '/var/lib/signal-recorder/upload_queue.json'))
         self.queue: List[UploadTask] = []
+        
+        # Init protocol
+        self.protocol = self._init_protocol(config)
         
         # Load queue from disk
         self._load_queue()
@@ -679,6 +695,16 @@ class UploadManager:
                                 task.metadata['date'],
                                 task.metadata['band']
                             )
+                    
+                    # Run success callback (e.g., for cleanup)
+                    if self.on_success_callback:
+                        try:
+                            logger.info(f"Running success callback for {task.dataset_path}")
+                            self.on_success_callback(task)
+                        except Exception as cb_err:
+                            logger.error(f"Success callback failed: {cb_err}", exc_info=True)
+                            # Note: We still consider the upload "completed" even if cleanup failed
+                            
                 else:
                     logger.warning(f"Upload verification failed: {task.dataset_path}")
                     task.status = "pending"

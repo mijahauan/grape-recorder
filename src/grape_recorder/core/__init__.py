@@ -8,7 +8,8 @@ Phase 3 data products pipeline:
 - PSWS upload preparation
 """
 
-from .decimation import StatefulDecimator, DecimationPipeline
+from .decimation import StatefulDecimator, decimate_for_upload
+from .decimation_pipeline import DecimationPipeline
 from .decimated_buffer import DecimatedBuffer, MinuteMetadata, DayMetadata
 from .carrier_spectrogram import CarrierSpectrogramGenerator, SpectrogramConfig
 from .phase3_product_engine import Phase3ProductEngine

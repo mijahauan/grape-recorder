@@ -13,9 +13,10 @@ grape-upload        Upload to PSWS repository
 
 import argparse
 import logging
-import sys
-from datetime import datetime, date, timedelta
 from pathlib import Path
+from datetime import datetime, date, timedelta
+import sys
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -106,23 +107,26 @@ def decimate(args=None):
 
 def decimate_cmd(args):
     """Execute decimation."""
-    from .core.decimation import DecimationPipeline
+    from .core.decimation_pipeline import DecimationPipeline
     
     data_root = Path(args.data_root)
+    # Handle both input formats
     date_str = args.date or datetime.now().strftime('%Y-%m-%d')
     
-    # Normalize date format
+    # Normalize date format for processing
     if len(date_str) == 8:
         date_str = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
     
     logger.info(f"Decimating data for {date_str}")
     
-    # TODO: Implement full decimation pipeline
-    # pipeline = DecimationPipeline(data_root)
-    # pipeline.process_day(date_str, channel=args.channel)
-    
-    logger.info("Decimation complete")
-    return 0
+    try:
+        pipeline = DecimationPipeline(data_root)
+        pipeline.process_day(date_str, channel=args.channel)
+        logger.info("Decimation complete")
+        return 0
+    except Exception as e:
+        logger.error(f"Decimation failed: {e}", exc_info=True)
+        return 1
 
 
 def spectrogram(args=None):
@@ -227,9 +231,89 @@ def upload(args=None):
     return upload_cmd(args)
 
 
+
+def cleanup_handler(task):
+    """
+    Cleanup handler called after successful upload.
+    Deletes Digital RF data (except token) and decimated binary files.
+    """
+    try:
+        dataset_path = Path(task.dataset_path)
+        logger.info(f"Cleanup: Processing {dataset_path}")
+        
+        # 1. Digital RF cleanup
+        # Delete everything inside the OBS directory EXCEPT .upload_complete
+        if dataset_path.exists() and dataset_path.is_dir():
+            for item in dataset_path.iterdir():
+                if item.name == '.upload_complete':
+                    continue
+                try:
+                    if item.is_dir():
+                        shutil.rmtree(item)
+                    else:
+                        item.unlink()
+                except Exception as e:
+                    logger.warning(f"Failed to delete {item}: {e}")
+            logger.info(f"Cleanup: Digital RF data removed from {dataset_path.name}")
+            
+        # 2. Decimated binary cleanup
+        # Need date from metadata to find binary files
+        # task.metadata['date'] -> YYYY-MM-DD
+        if 'date' in task.metadata:
+            date_str = task.metadata['date'].replace('-', '')
+            # Scan products directory for this date
+            # data_root is not directly available in task, but dataset_path is in upload/YYYYMMDD/...
+            # So products is likely ../../../../../products
+            
+            # Robust way: navigate up from dataset_path to find 'upload', then switch to 'products'
+            # upload_dir/DATE/STATION/RECEIVER/OBS/
+            # So dataset_path.parent.parent.parent.parent is likely 'upload' parent (data_root)
+            
+            # Or assume standard structure if we can't infer
+            # Best effort: look for 'products' sibling to 'upload'
+            upload_root = None
+            p = dataset_path
+            for _ in range(5):
+                if p.name == 'upload':
+                    upload_root = p
+                    break
+                p = p.parent
+            
+            if upload_root:
+                data_root = upload_root.parent
+                products_dir = data_root / 'products'
+                
+                if products_dir.exists():
+                    cleaned_channels = 0
+                    for channel_dir in products_dir.iterdir():
+                        if not channel_dir.is_dir(): continue
+                        decimated_dir = channel_dir / 'decimated'
+                        if not decimated_dir.exists(): continue
+                        
+                        # Look for {DATE}.bin and {DATE}.json
+                        bin_file = decimated_dir / f"{date_str}.bin"
+                        json_file = decimated_dir / f"{date_str}.json"
+                        
+                        if bin_file.exists():
+                            bin_file.unlink()
+                            cleaned_channels += 1
+                        if json_file.exists():
+                            json_file.unlink()
+                            
+                    logger.info(f"Cleanup: Removed decimated files for {cleaned_channels} channels")
+                else:
+                    logger.warning(f"Cleanup: Could not find products directory at {products_dir}")
+            else:
+                 logger.warning("Cleanup: Could not locate data root from dataset path")
+                 
+    except Exception as e:
+        logger.error(f"Cleanup handler failed: {e}", exc_info=True)
+
+
 def upload_cmd(args):
     """Execute upload."""
-    from .uploader import UploadManager
+    import shutil # For cleanup handler
+    from .uploader import UploadManager, load_upload_config_from_toml
     
     data_root = Path(args.data_root)
     
@@ -247,9 +331,79 @@ def upload_cmd(args):
         # TODO: Show what would be uploaded
         return 0
     
-    # TODO: Implement upload
-    # manager = UploadManager(config)
-    # manager.upload_day(date_str)
+    # Load configuration
+    # Try to load from standard locations or use defaults
+    config_path = Path('/etc/hf-timestd/timestd-config.toml')
+    toml_config = {}
+    if config_path.exists():
+        import toml
+        try:
+            toml_config = toml.load(config_path)
+            logger.info(f"Loaded config from {config_path}")
+        except Exception as e:
+            logger.warning(f"Failed to load config: {e}")
+    
+    # Initialize implementation
+    try:
+        
+        # Override data root if provided strings
+        if 'recorder' not in toml_config:
+            toml_config['recorder'] = {}
+            
+        # Manually construct config for UploadManager
+        upload_config = load_upload_config_from_toml(toml_config)
+        
+        # Pass cleanup handler
+        manager = UploadManager(
+            upload_config, 
+            storage_manager=None,
+            on_success_callback=cleanup_handler
+        )
+        
+        # Package for upload first? Or assume it's done?
+        # The logic here assumes data is already packaged in products/{CHANNEL}/drf
+        # We need to find those directories and enqueue them.
+        
+        upload_dir = data_root / 'upload' / date_str
+        if not upload_dir.exists():
+             logger.warning(f"No upload directory found at {upload_dir}")
+             # Check for legacy or alternative paths if needed
+             return 0
+             
+        # Find all channel directories
+        # Expected: upload/{YYYYMMDD}/{CALLSIGN}_{GRID}/{RECEIVER}@{ID}/OBS.../ch0/
+        # Enqueue the OBSERVATION directory (OBS...)
+        
+        enqueued_count = 0
+        for station_dir in upload_dir.iterdir():
+            if not station_dir.is_dir(): continue
+            for receiver_dir in station_dir.iterdir():
+                if not receiver_dir.is_dir(): continue
+                for obs_dir in receiver_dir.iterdir():
+                    if obs_dir.is_dir() and obs_dir.name.startswith('OBS'):
+                        # Found an observation directory
+                        
+                        # Metadata construction
+                        meta = {
+                            'date': date_str,
+                            'callsign': station_dir.name.split('_')[0],
+                            'grid_square': station_dir.name.split('_')[1] if '_' in station_dir.name else '',
+                            'station_id': receiver_dir.name.split('@')[1].split('_')[0] if '@' in receiver_dir.name else '',
+                            'instrument_id': receiver_dir.name.split('_')[-1] if '_' in receiver_dir.name else '1'
+                        }
+                        
+                        manager.enqueue(obs_dir, meta)
+                        enqueued_count += 1
+        
+        if enqueued_count > 0:
+            logger.info(f"Enqueued {enqueued_count} datasets for upload")
+            manager.process_queue()
+        else:
+            logger.warning("No datasets found to enqueue")
+
+    except Exception as e:
+        logger.error(f"Upload failed: {e}", exc_info=True)
+        return 1
     
     logger.info("Upload complete")
     return 0

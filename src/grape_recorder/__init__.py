@@ -19,7 +19,8 @@ GRAPE Recorder provides Phase 3 functionality:
 __version__ = "0.1.0"
 __author__ = "Michael James Hauan (AC0G)"
 
-from .core.decimation import StatefulDecimator, DecimationPipeline
+from .core.decimation import StatefulDecimator
+from .core.decimation_pipeline import DecimationPipeline
 from .core.decimated_buffer import DecimatedBuffer
 from .core.carrier_spectrogram import CarrierSpectrogramGenerator
 from .core.phase3_product_engine import Phase3ProductEngine
