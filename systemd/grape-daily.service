@@ -1,0 +1,22 @@
+[Unit]
+Description=Grape Recorder Daily Processing
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=wsprdaemon
+Group=wsprdaemon
+# Environment=GRA_DATA_ROOT=/var/lib/timestd
+# Environment=GRA_CALLSIGN=AC0G
+# Environment=GRA_GRID=EM28
+
+# Adjust paths and arguments as necessary
+# 1. Decimate yesterday's data
+ExecStart=/usr/local/bin/grape-decimate --yesterday --data-root /var/lib/timestd
+
+# 2. Package into Digital RF (requires callsign/grid)
+# Note: You might want to wrap these in a shell script for easier config management
+ExecStart=/usr/local/bin/grape-package-drf --yesterday --data-root /var/lib/timestd --callsign AC0G --grid EM28
+
+# 3. Upload to PSWS (uses wsprdaemon keys found in /home/wsprdaemon/.ssh)
+ExecStart=/usr/local/bin/grape-upload --yesterday --data-root /var/lib/timestd

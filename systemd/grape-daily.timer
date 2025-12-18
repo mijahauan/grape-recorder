@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Grape Recorder Daily Processing
+
+[Timer]
+# Run daily at 00:30 UTC (to ensure previous day's data is fully closed)
+OnCalendar=*-*-* 00:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
