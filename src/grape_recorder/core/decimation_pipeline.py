@@ -19,8 +19,8 @@ class DecimationPipeline:
     Pipeline to process raw high-rate station data into 10 Hz products.
     
     Flow:
-    1. Read RawBinaryReader (20 kHz, minute chunks)
-    2. Decimate via StatefulDecimator (20 kHz -> 10 Hz)
+    1. Read RawBinaryReader (24 kHz, minute chunks)
+    2. Decimate via StatefulDecimator (24 kHz -> 10 Hz)
     3. Write to DecimatedBuffer (10 Hz, daily files)
     """
     

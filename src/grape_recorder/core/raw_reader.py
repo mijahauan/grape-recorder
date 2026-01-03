@@ -168,14 +168,14 @@ class RawBinaryReader:
     def get_sample_rate(self, date_str: str) -> int:
         """
         Estimate sample rate from the first available file.
-        Default to 20000 if cannot determine.
+        Default to 24000 if cannot determine.
         """
         minutes = self.get_available_minutes(date_str)
         if not minutes:
-            return 20000
+            return 24000
             
         _, meta = self.read_minute(minutes[0])
         if meta and 'sample_rate' in meta:
             return int(meta['sample_rate'])
             
-        return 20000 
+        return 24000 

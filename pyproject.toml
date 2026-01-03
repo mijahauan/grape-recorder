@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grape-recorder"
+version = "0.1.0"
+description = "HF time signal data products - decimation, spectrograms, and PSWS upload"
+readme = "README.md"
+authors = [
+  { name = "Michael James Hauan", email = "ac0g@arrl.net" },
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Communications :: Ham Radio",
+]
+dependencies = [
+    "numpy>=1.21.0",
+    "scipy>=1.7.0",
+    "matplotlib>=3.5.0",
+    "h5py>=3.0.0",
+    "paramiko>=2.9.0",
+    "hf-timestd>=0.1.0",
+    "zstandard>=0.19.0",
+]
+
+[project.optional-dependencies]
+drf = [
+    "digital_rf>=2.6.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=3.0.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/HamSCI/grape-recorder"
+"Bug Tracker" = "https://github.com/HamSCI/grape-recorder/issues"
+Documentation = "https://github.com/HamSCI/grape-recorder#readme"
+
+[project.scripts]
+grape-recorder = "grape_recorder.cli:main"
+grape-decimate = "grape_recorder.cli:decimate"
+grape-spectrogram = "grape_recorder.cli:spectrogram"
+grape-upload = "grape_recorder.cli:upload"
+grape-package-drf = "grape_recorder.cli:package_drf"
+
+[tool.setuptools.packages.find]
+where = ["src"]

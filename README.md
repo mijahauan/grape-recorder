@@ -3,7 +3,8 @@
 **HF Time Signal Data Products for PSWS/HamSCI**
 
 GRAPE Recorder processes WWV/WWVH/CHU time signal recordings to produce:
-- **10 Hz decimated data** from 20 kHz IQ samples (phase-preserving)
+
+- **10 Hz decimated data** from 24 kHz IQ samples (phase-preserving)
 - **Carrier spectrograms** with solar zenith overlays
 - **Power graphs** for propagation analysis
 - **Digital RF packages** for PSWS upload
@@ -19,7 +20,7 @@ GRAPE Recorder is **Phase 3** of the three-phase HF time standard pipeline:
 ├─────────────────────────────────────────────────────────────────────┤
 │  Phase 1: Recording (hf-timestd)                                    │
 │  ├─ RTP stream capture from ka9q-radio                              │
-│  ├─ 20 kHz IQ archival in Digital RF format                         │
+│  ├─ 24 kHz IQ archival in Digital RF format                         │
 │  └─ GPSDO-disciplined timestamps                                    │
 │                                                                     │
 │  Phase 2: Timing Analysis (hf-timestd)                              │
@@ -29,7 +30,7 @@ GRAPE Recorder is **Phase 3** of the three-phase HF time standard pipeline:
 │  └─ Multi-broadcast fusion                                          │
 │                                                                     │
 │  Phase 3: Data Products (grape-recorder) ← THIS PACKAGE             │
-│  ├─ 20 kHz → 10 Hz decimation                                       │
+│  ├─ 24 kHz → 10 Hz decimation                                       │
 │  ├─ Carrier spectrograms + power graphs                             │
 │  ├─ Digital RF packaging with timing annotations                    │
 │  └─ PSWS/GRAPE repository upload                                    │
@@ -38,15 +39,35 @@ GRAPE Recorder is **Phase 3** of the three-phase HF time standard pipeline:
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.9 or newer
+- `hf-timestd` core package (Phase 1 & 2)
+
+### Standard Linux Install
+
+We recommend installing into `/opt/grape-recorder`:
+
 ```bash
-# Install hf-timestd first (provides Phase 1 & 2)
-pip install -e /path/to/hf-timestd
+# 1. Create directory and virtual environment
+sudo mkdir -p /opt/grape-recorder
+sudo python3 -m venv /opt/grape-recorder/venv
 
-# Install grape-recorder
-pip install -e /path/to/grape-recorder
+# 2. Install dependencies
+# Note: hf-timestd is currently a local package and must be installed first
+# Assuming hf-timestd is at /opt/hf-timestd
+sudo /opt/grape-recorder/venv/bin/pip install -e /opt/hf-timestd
 
-# Or with Digital RF support
-pip install -e /path/to/grape-recorder[drf]
+# 3. Install grape-recorder (from source)
+cd /home/mjh/git/grape-recorder
+sudo /opt/grape-recorder/venv/bin/pip install -e .[drf]
+```
+
+### Development
+
+```bash
+# Install with dev dependencies
+pip install -e .[drf,dev]
 ```
 
 ## Quick Start
@@ -54,21 +75,21 @@ pip install -e /path/to/grape-recorder[drf]
 ### Generate Daily Spectrogram
 
 ```bash
-grape-spectrogram --data-root /var/lib/grape --channel "WWV 10 MHz" --date 2025-12-14
+/opt/grape-recorder/venv/bin/grape-spectrogram --data-root /var/lib/timestd --channel "WWV 10 MHz" --date 2025-12-14
 ```
 
 ### Decimate and Package for Upload
 
 ```bash
-# Decimate 20 kHz → 10 Hz
-grape-decimate --data-root /var/lib/grape --date 2025-12-14
+# Decimate 24 kHz → 10 Hz
+/opt/grape-recorder/venv/bin/grape-decimate --data-root /var/lib/timestd --date 2025-12-14
 
 # Package as Digital RF
-grape-package-drf --data-root /var/lib/grape --date 2025-12-14 \
+/opt/grape-recorder/venv/bin/grape-package-drf --data-root /var/lib/timestd --date 2025-12-14 \
     --callsign AC0G --grid EM28
 
 # Upload to PSWS
-grape-upload --data-root /var/lib/grape --date 2025-12-14
+/opt/grape-recorder/venv/bin/grape-upload --data-root /var/lib/timestd --date 2025-12-14
 ```
 
 ### Python API
@@ -83,7 +104,7 @@ from grape_recorder import (
 
 # Generate spectrogram with solar zenith overlay
 gen = CarrierSpectrogramGenerator(
-    data_root='/var/lib/grape',
+    data_root='/var/lib/timestd',
     channel_name='WWV 10 MHz',
     receiver_grid='EM28ww'
 )
@@ -91,7 +112,7 @@ gen.generate_daily('20251214')
 
 # Package for PSWS upload
 packager = DailyDRFPackager(
-    data_root='/var/lib/grape',
+    data_root='/var/lib/timestd',
     station_config={
         'callsign': 'AC0G',
         'grid_square': 'EM28',

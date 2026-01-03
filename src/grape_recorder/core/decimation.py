@@ -5,7 +5,7 @@ Multi-Stage Decimation for GRAPE Recorder - Precision Doppler Measurements
 ================================================================================
 PURPOSE
 ================================================================================
-Decimate 20 kHz IQ samples to 10 Hz (factor 2000) while preserving:
+Decimate 24 kHz IQ samples to 10 Hz (factor 2400) while preserving:
     1. Phase continuity (for Doppler measurements)
     2. Flat passband response (for accurate amplitude)
     3. Clean stopband (no aliasing artifacts)
@@ -16,16 +16,16 @@ GRAPE/HamSCI/PSWS repository at 10 Hz sample rate.
 ================================================================================
 THEORY: WHY MULTI-STAGE DECIMATION?
 ================================================================================
-Direct decimation by factor R=2000 would require an anti-aliasing filter
-with transition bandwidth of (10/2)/20000 = 0.00025 of Nyquist, which would
+Direct decimation by factor R=2400 would require an anti-aliasing filter
+with transition bandwidth of (10/2)/24000 = 0.00021 of Nyquist, which would
 need ~100,000 taps. This is computationally prohibitive.
 
 Multi-stage decimation splits the problem:
-    20 kHz → 400 Hz → 10 Hz
-    (R=50)    (R=40)
+    24 kHz → 400 Hz → 10 Hz
+    (R=60)    (R=40)
 
 Each stage has relaxed filter requirements:
-    Stage 1: 20 kHz → 400 Hz, transition at 200 Hz (1% of Nyquist) → ~100 taps
+    Stage 1: 24 kHz → 400 Hz, transition at 200 Hz (0.8% of Nyquist) → ~100 taps
     Stage 2: 400 Hz → 10 Hz, transition at 5 Hz (2.5% of Nyquist) → ~200 taps
 
 TOTAL COMPUTATION: ~300 multiplies/sample vs ~100,000 for single-stage
@@ -50,7 +50,7 @@ TRANSFER FUNCTION:
     H(z) = [(1 - z^(-RM)) / (1 - z^(-1))]^N
 
 Where:
-    R = decimation factor (50 for 20 kHz → 400 Hz)
+    R = decimation factor (60 for 24 kHz → 400 Hz)
     M = differential delay (typically 1)
     N = filter order (4 in our implementation)
 
@@ -61,8 +61,8 @@ This creates:
     - Passband with sinc-like droop (requires compensation)
     - Nulls at multiples of fs/R (perfect alias rejection at those frequencies)
 
-CIC DROOP at edge of 5 Hz passband (f=5 Hz, R=50, fs=20000, N=4):
-    |H(5)| = |sin(π×5×50/20000) / sin(π×5/20000)|^4 ≈ 0.987 (−0.11 dB)
+CIC DROOP at edge of 5 Hz passband (f=5 Hz, R=60, fs=24000, N=4):
+    |H(5)| = |sin(π×5×60/24000) / sin(π×5/24000)|^4 ≈ 0.987 (−0.11 dB)
 
 REFERENCE: Hogenauer, E.B. (1981). "An economical class of digital filters
            for decimation and interpolation." IEEE Trans. ASSP-29(2), 155-162.
@@ -81,7 +81,7 @@ This flattens the passband to within 0.1 dB of unity gain.
 
 WHY AT INTERMEDIATE RATE?
 - At 400 Hz, the compensation filter is applied AFTER CIC decimation
-- Filter operates on fewer samples (50× fewer than at 20 kHz)
+- Filter operates on fewer samples (60× fewer than at 24 kHz)
 - Passband droop correction is independent of final decimation
 
 REFERENCE: Altera Application Note 455: "Understanding CIC Compensation Filters"
@@ -113,12 +113,12 @@ REFERENCE: Kaiser, J.F. (1974). "Nonrecursive digital filter design using
 ================================================================================
 SIGNAL FLOW
 ================================================================================
-    Input: Complex IQ @ 20 kHz (1,200,000 samples/minute)
+    Input: Complex IQ @ 24 kHz (1,440,000 samples/minute)
            │
            ▼
     ┌──────────────────────────────────────────────────────────────────────┐
-    │ STAGE 1: CIC Filter (R=50, N=4)                                      │
-    │   - Input:  20,000 Hz                                                │
+    │ STAGE 1: CIC Filter (R=60, N=4)                                      │
+    │   - Input:  24,000 Hz                                                │
     │   - Output: 400 Hz                                                   │
     │   - Alias rejection at 400, 800, 1200... Hz                          │
     │   - Passband droop: ~0.1 dB at 5 Hz                                  │
@@ -168,11 +168,11 @@ USAGE
 ================================================================================
     from grape_recorder.core.decimation import decimate_for_upload
     
-    # 60 seconds of 20 kHz IQ data
-    iq_20k = np.random.randn(1200000) + 1j*np.random.randn(1200000)
+    # 60 seconds of 24 kHz IQ data
+    iq_24k = np.random.randn(1440000) + 1j*np.random.randn(1440000)
     
     # Decimate to 10 Hz
-    iq_10hz = decimate_for_upload(iq_20k, input_rate=20000, output_rate=10)
+    iq_10hz = decimate_for_upload(iq_24k, input_rate=24000, output_rate=10)
     
     print(len(iq_10hz))  # 600 samples (60 seconds × 10 Hz)
 
@@ -205,12 +205,11 @@ SUPPORTED_INPUT_RATES: Dict[int, Dict] = {
         'total_factor': 1600,      # 16000 / 10 = 1600
         'description': '16 kHz (legacy)',
     },
-    # To add 24 kHz support:
-    # 24000: {
-    #     'cic_decimation': 60,    # 24000 / 60 = 400 Hz
-    #     'total_factor': 2400,    # 24000 / 10 = 2400
-    #     'description': '24 kHz',
-    # },
+    24000: {
+        'cic_decimation': 60,      # 24000 / 60 = 400 Hz
+        'total_factor': 2400,      # 24000 / 10 = 2400
+        'description': '24 kHz (standard)',
+    },
 }
 
 OUTPUT_RATE = 10  # Fixed 10 Hz output for GRAPE
@@ -503,16 +502,16 @@ def _design_final_fir(sample_rate: int, cutoff: float,
 def decimate_for_upload(iq_samples: np.ndarray, input_rate: int = 20000, 
                         output_rate: int = 10) -> Optional[np.ndarray]:
     """
-    Multi-stage optimized decimation: 20 kHz → 10 Hz (factor 2000)
-    Also supports legacy 16 kHz → 10 Hz (factor 1600) for backward compatibility.
+    Multi-stage optimized decimation: 24 kHz → 10 Hz (factor 2400)
+    Also supports legacy 20 kHz (factor 2000) and 16 kHz (factor 1600).
     
     Three-stage pipeline preserving Doppler precision:
+    - 24 kHz: CIC R=60 (24000→400 Hz) + Comp FIR + Final FIR R=40 (400→10 Hz)
     - 20 kHz: CIC R=50 (20000→400 Hz) + Comp FIR + Final FIR R=40 (400→10 Hz)
-    - 16 kHz: CIC R=40 (16000→400 Hz) + Comp FIR + Final FIR R=40 (400→10 Hz)
     
     Args:
         iq_samples: Complex IQ samples at input_rate
-        input_rate: Input sample rate (Hz) - 20000 (default) or 16000
+        input_rate: Input sample rate (Hz) - 24000 (default), 20000, or 16000
         output_rate: Output sample rate (Hz) - must be 10
         
     Returns:
@@ -520,8 +519,8 @@ def decimate_for_upload(iq_samples: np.ndarray, input_rate: int = 20000,
         Returns None if input too short or rates unsupported
         
     Example:
-        >>> iq_20k = np.random.randn(1200000) + 1j*np.random.randn(1200000)  # 60 seconds
-        >>> iq_10hz = decimate_for_upload(iq_20k, 20000, 10)
+        >>> iq_24k = np.random.randn(1440000) + 1j*np.random.randn(1440000)  # 60 seconds
+        >>> iq_10hz = decimate_for_upload(iq_24k, 24000, 10)
         >>> len(iq_10hz)
         600  # 60 seconds at 10 Hz
     """
@@ -600,6 +599,7 @@ def decimate_for_upload_simple(iq_samples: np.ndarray, input_rate: int = 20000,
     Simple fallback decimation using scipy.signal.decimate
     
     Use this if the optimized version has issues.
+    - 24 kHz: Stages 10×10×24 = 2400
     - 20 kHz: Stages 10×10×20 = 2000
     - 16 kHz: Stages 10×10×16 = 1600
     
@@ -662,7 +662,7 @@ class StatefulDecimator:
     that cause visible artifacts in spectrograms.
     
     Usage:
-        decimator = StatefulDecimator(input_rate=20000, output_rate=10)
+        decimator = StatefulDecimator(input_rate=24000, output_rate=10)
         
         # Process minute by minute - state is preserved
         for minute_samples in minute_chunks:
@@ -673,12 +673,12 @@ class StatefulDecimator:
         decimator.reset()
     """
     
-    def __init__(self, input_rate: int = 20000, output_rate: int = 10):
+    def __init__(self, input_rate: int = 24000, output_rate: int = 10):
         """
         Initialize stateful decimator.
         
         Args:
-            input_rate: Input sample rate (Hz) - 20000 or 16000
+            input_rate: Input sample rate (Hz) - 24000, 20000 or 16000
             output_rate: Output sample rate (Hz) - must be 10
         """
         if output_rate != OUTPUT_RATE:

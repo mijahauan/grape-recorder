@@ -5,7 +5,7 @@ GRAPE Recorder CLI - Command-line interface for data products
 Commands:
 ---------
 grape-recorder      Main entry point
-grape-decimate      Decimate 20 kHz → 10 Hz
+grape-decimate      Decimate IQ (20/24 kHz) → 10 Hz
 grape-spectrogram   Generate spectrograms
 grape-package-drf   Package Digital RF for upload
 grape-upload        Upload to PSWS repository
@@ -42,7 +42,7 @@ def main():
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
     # Decimate command
-    dec_parser = subparsers.add_parser('decimate', help='Decimate 20 kHz → 10 Hz')
+    dec_parser = subparsers.add_parser('decimate', help='Decimate IQ (20/24 kHz) → 10 Hz')
     dec_parser.add_argument('--data-root', required=True, help='Data root directory')
     dec_parser.add_argument('--channel', help='Channel name (e.g., "WWV 10 MHz")')
     dec_parser.add_argument('--date', help='Date to process (YYYY-MM-DD or YYYYMMDD)')
@@ -92,7 +92,7 @@ def main():
 def decimate(args=None):
     """Entry point for grape-decimate command."""
     parser = argparse.ArgumentParser(
-        description='Decimate 20 kHz IQ to 10 Hz'
+        description='Decimate 20/24 kHz IQ to 10 Hz'
     )
     parser.add_argument('--data-root', required=True, help='Data root directory')
     parser.add_argument('--channel', help='Channel name')
