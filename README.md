@@ -44,9 +44,26 @@ GRAPE Recorder is **Phase 3** of the three-phase HF time standard pipeline:
 - Python 3.9 or newer
 - `hf-timestd` core package (Phase 1 & 2)
 
-### Standard Linux Install
+### Quick Install (Recommended)
 
-We recommend installing into `/opt/grape-recorder`:
+Use the provided installation script:
+
+```bash
+cd /path/to/grape-recorder
+./install.sh
+```
+
+The script will:
+
+- Create `/opt/grape-recorder` with a virtual environment
+- Install dependencies (including `hf-timestd` if available at `/opt/hf-timestd`)
+- Create `/var/log/grape-recorder` for logs
+- Create `/var/lib/grape-recorder` for data products
+- Optionally create symlinks in `/usr/local/bin`
+
+### Manual Installation
+
+If you prefer manual installation:
 
 ```bash
 # 1. Create directory and virtual environment
@@ -59,15 +76,21 @@ sudo python3 -m venv /opt/grape-recorder/venv
 sudo /opt/grape-recorder/venv/bin/pip install -e /opt/hf-timestd
 
 # 3. Install grape-recorder (from source)
-cd /home/mjh/git/grape-recorder
+cd /path/to/grape-recorder
 sudo /opt/grape-recorder/venv/bin/pip install -e .[drf]
+
+# 4. Create directories
+sudo mkdir -p /var/log/grape-recorder /var/lib/grape-recorder
+sudo chown $USER:$USER /var/log/grape-recorder /var/lib/grape-recorder
 ```
 
-### Development
+### Uninstall
+
+To remove the installation:
 
 ```bash
-# Install with dev dependencies
-pip install -e .[drf,dev]
+cd /path/to/grape-recorder
+./uninstall.sh
 ```
 
 ## Quick Start
