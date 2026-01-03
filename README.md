@@ -137,6 +137,20 @@ products/{CHANNEL}/
         └── {CALLSIGN}_{GRID}/
             └── ch0/
                 └── rf@*.h5
+
+## Logging and Data Locations
+
+### Logs
+Logs are printed to standard output (stderr), which is captured by systemd if running as a service.
+- **View service logs**: `journalctl -u grape-recorder`
+- **View live logs**: `journalctl -u grape-recorder -f`
+
+### Data Products
+Data is stored within the `data_root` directory (typically `/var/lib/timestd` or `/var/lib/grape-recorder`), organized by channel:
+- **Decimated IQ**: `{data_root}/products/{CHANNEL}/decimated/`
+- **Spectrograms**: `{data_root}/products/{CHANNEL}/spectrograms/`
+- **Digital RF**: `{data_root}/products/{CHANNEL}/drf/`
+
 ```
 
 ## Configuration
