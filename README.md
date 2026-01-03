@@ -141,7 +141,14 @@ products/{CHANNEL}/
 
 ## Configuration
 
-GRAPE Recorder reads configuration from `grape-config.toml`:
+GRAPE Recorder looks for `grape-config.toml` in the following locations (in order):
+
+1. Current working directory
+2. `~/.config/grape-recorder/grape-config.toml`
+3. `/etc/grape-recorder/grape-config.toml`
+4. `/etc/hf-timestd/timestd-config.toml` (Legacy)
+
+Example configuration:
 
 ```toml
 [station]

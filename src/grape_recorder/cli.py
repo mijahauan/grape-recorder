@@ -332,16 +332,31 @@ def upload_cmd(args):
         return 0
     
     # Load configuration
-    # Try to load from standard locations or use defaults
-    config_path = Path('/etc/hf-timestd/timestd-config.toml')
+    # Search paths for grape-config.toml or legacy timestd-config.toml
+    config_paths = [
+        Path('grape-config.toml'),
+        Path.home() / '.config' / 'grape-recorder' / 'grape-config.toml',
+        Path('/etc/grape-recorder/grape-config.toml'),
+        # Legacy location
+        Path('/etc/hf-timestd/timestd-config.toml')
+    ]
+    
+    config_path = None
+    for p in config_paths:
+        if p.exists():
+            config_path = p
+            break
+            
     toml_config = {}
-    if config_path.exists():
+    if config_path:
         import toml
         try:
             toml_config = toml.load(config_path)
             logger.info(f"Loaded config from {config_path}")
         except Exception as e:
-            logger.warning(f"Failed to load config: {e}")
+            logger.warning(f"Failed to load config from {config_path}: {e}")
+    else:
+        logger.debug("No configuration file found")
     
     # Initialize implementation
     try:
