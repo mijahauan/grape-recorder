@@ -58,7 +58,7 @@ The script will:
 - Create `/opt/grape-recorder` with a virtual environment
 - Install dependencies (including `hf-timestd` if available at `/opt/hf-timestd`)
 - Create `/var/log/grape-recorder` for logs
-- Create `/var/lib/grape-recorder` for data products
+- Create `/var/lib/timestd` for data products
 - Optionally create symlinks in `/usr/local/bin`
 
 ### Manual Installation
@@ -80,8 +80,8 @@ cd /path/to/grape-recorder
 sudo /opt/grape-recorder/venv/bin/pip install -e .[drf]
 
 # 4. Create directories
-sudo mkdir -p /var/log/grape-recorder /var/lib/grape-recorder
-sudo chown $USER:$USER /var/log/grape-recorder /var/lib/grape-recorder
+sudo mkdir -p /var/log/grape-recorder /var/lib/timestd
+sudo chown $USER:$USER /var/log/grape-recorder /var/lib/timestd
 ```
 
 ### Uninstall
@@ -179,17 +179,17 @@ If running as a systemd service, logs are also captured by journald:
 
 ### Data Products
 
-All data products are stored in `/var/lib/grape-recorder`, organized by channel:
+All data products are stored in `/var/lib/timestd`, organized by channel:
 
-- **Decimated IQ**: `/var/lib/grape-recorder/products/{CHANNEL}/decimated/`
-- **Spectrograms**: `/var/lib/grape-recorder/products/{CHANNEL}/spectrograms/`
-- **Digital RF**: `/var/lib/grape-recorder/products/{CHANNEL}/drf/`
+- **Decimated IQ**: `/var/lib/timestd/products/{CHANNEL}/decimated/`
+- **Spectrograms**: `/var/lib/timestd/products/{CHANNEL}/spectrograms/`
+- **Digital RF**: `/var/lib/timestd/products/{CHANNEL}/drf/`
 
 To create the data directory:
 
 ```bash
-sudo mkdir -p /var/lib/grape-recorder
-sudo chown $USER:$USER /var/lib/grape-recorder
+sudo mkdir -p /var/lib/timestd
+sudo chown $USER:$USER /var/lib/timestd
 ```
 
 ```

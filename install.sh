@@ -26,7 +26,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Installation paths
 INSTALL_DIR="/opt/grape-recorder"
 LOG_DIR="/var/log/grape-recorder"
-DATA_DIR="/var/lib/grape-recorder"
+DATA_DIR="/var/lib/timestd"
 HF_TIMESTD_DIR="/opt/hf-timestd"
 
 echo "Installation directories:"
