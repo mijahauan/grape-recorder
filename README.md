@@ -75,21 +75,21 @@ pip install -e .[drf,dev]
 ### Generate Daily Spectrogram
 
 ```bash
-/opt/grape-recorder/venv/bin/grape-spectrogram --data-root /var/lib/timestd --channel "WWV 10 MHz" --date 2025-12-14
+/opt/grape-recorder/venv/bin/grape-spectrogram --channel "WWV 10 MHz" --date 2025-12-14
 ```
 
 ### Decimate and Package for Upload
 
 ```bash
 # Decimate 24 kHz → 10 Hz
-/opt/grape-recorder/venv/bin/grape-decimate --data-root /var/lib/timestd --date 2025-12-14
+/opt/grape-recorder/venv/bin/grape-decimate --date 2025-12-14
 
 # Package as Digital RF
-/opt/grape-recorder/venv/bin/grape-package-drf --data-root /var/lib/timestd --date 2025-12-14 \
+/opt/grape-recorder/venv/bin/grape-package-drf --date 2025-12-14 \
     --callsign AC0G --grid EM28
 
 # Upload to PSWS
-/opt/grape-recorder/venv/bin/grape-upload --data-root /var/lib/timestd --date 2025-12-14
+/opt/grape-recorder/venv/bin/grape-upload --date 2025-12-14
 ```
 
 ### Python API
@@ -141,15 +141,33 @@ products/{CHANNEL}/
 ## Logging and Data Locations
 
 ### Logs
-Logs are printed to standard output (stderr), which is captured by systemd if running as a service.
+Logs are written to `/var/log/grape-recorder/grape-recorder.log` if the directory exists and is writable. Otherwise, logs are printed to standard output (stderr).
+
+To create the log directory:
+```bash
+sudo mkdir -p /var/log/grape-recorder
+sudo chown $USER:$USER /var/log/grape-recorder
+```
+
+If running as a systemd service, logs are also captured by journald:
+
 - **View service logs**: `journalctl -u grape-recorder`
 - **View live logs**: `journalctl -u grape-recorder -f`
 
 ### Data Products
-Data is stored within the `data_root` directory (typically `/var/lib/timestd` or `/var/lib/grape-recorder`), organized by channel:
-- **Decimated IQ**: `{data_root}/products/{CHANNEL}/decimated/`
-- **Spectrograms**: `{data_root}/products/{CHANNEL}/spectrograms/`
-- **Digital RF**: `{data_root}/products/{CHANNEL}/drf/`
+
+All data products are stored in `/var/lib/grape-recorder`, organized by channel:
+
+- **Decimated IQ**: `/var/lib/grape-recorder/products/{CHANNEL}/decimated/`
+- **Spectrograms**: `/var/lib/grape-recorder/products/{CHANNEL}/spectrograms/`
+- **Digital RF**: `/var/lib/grape-recorder/products/{CHANNEL}/drf/`
+
+To create the data directory:
+
+```bash
+sudo mkdir -p /var/lib/grape-recorder
+sudo chown $USER:$USER /var/lib/grape-recorder
+```
 
 ```
 

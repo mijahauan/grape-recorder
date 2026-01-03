@@ -24,10 +24,27 @@ logger = logging.getLogger(__name__)
 def setup_logging(verbose: bool = False):
     """Configure logging."""
     level = logging.DEBUG if verbose else logging.INFO
+    handlers = [logging.StreamHandler()]
+    
+    # Add file handler if directory exists
+    log_dir = Path('/var/log/grape-recorder')
+    if log_dir.exists():
+        log_file = log_dir / 'grape-recorder.log'
+        try:
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            ))
+            handlers.append(file_handler)
+        except Exception as e:
+            pass  # Fallback to console only if permission denied
+            
     logging.basicConfig(
         level=level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=handlers
     )
 
 
@@ -43,7 +60,7 @@ def main():
     
     # Decimate command
     dec_parser = subparsers.add_parser('decimate', help='Decimate IQ (20/24 kHz) → 10 Hz')
-    dec_parser.add_argument('--data-root', required=True, help='Data root directory')
+    dec_parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     dec_parser.add_argument('--channel', help='Channel name (e.g., "WWV 10 MHz")')
     dec_parser.add_argument('--date', help='Date to process (YYYY-MM-DD or YYYYMMDD)')
     dec_parser.add_argument('--all-channels', action='store_true',
@@ -51,7 +68,7 @@ def main():
     
     # Spectrogram command
     spec_parser = subparsers.add_parser('spectrogram', help='Generate spectrograms')
-    spec_parser.add_argument('--data-root', required=True, help='Data root directory')
+    spec_parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     spec_parser.add_argument('--channel', help='Channel name')
     spec_parser.add_argument('--date', help='Date (YYYY-MM-DD or YYYYMMDD)')
     spec_parser.add_argument('--rolling', type=int, choices=[6, 12, 24],
@@ -60,7 +77,7 @@ def main():
     
     # Package DRF command
     drf_parser = subparsers.add_parser('package-drf', help='Package Digital RF')
-    drf_parser.add_argument('--data-root', required=True, help='Data root directory')
+    drf_parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     drf_parser.add_argument('--date', required=True, help='Date to package')
     drf_parser.add_argument('--callsign', required=True, help='Station callsign')
     drf_parser.add_argument('--grid', required=True, help='Grid square')
@@ -68,7 +85,7 @@ def main():
     
     # Upload command
     upload_parser = subparsers.add_parser('upload', help='Upload to PSWS')
-    upload_parser.add_argument('--data-root', required=True, help='Data root directory')
+    upload_parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     upload_parser.add_argument('--date', help='Date to upload (default: yesterday)')
     upload_parser.add_argument('--dry-run', action='store_true',
                                help='Show what would be uploaded')
@@ -94,7 +111,7 @@ def decimate(args=None):
     parser = argparse.ArgumentParser(
         description='Decimate 20/24 kHz IQ to 10 Hz'
     )
-    parser.add_argument('--data-root', required=True, help='Data root directory')
+    parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     parser.add_argument('--channel', help='Channel name')
     parser.add_argument('--date', help='Date (YYYY-MM-DD or YYYYMMDD)')
     parser.add_argument('--all-channels', action='store_true')
@@ -134,7 +151,7 @@ def spectrogram(args=None):
     parser = argparse.ArgumentParser(
         description='Generate carrier spectrograms'
     )
-    parser.add_argument('--data-root', required=True, help='Data root directory')
+    parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     parser.add_argument('--channel', required=True, help='Channel name')
     parser.add_argument('--date', help='Date (YYYY-MM-DD or YYYYMMDD)')
     parser.add_argument('--rolling', type=int, choices=[6, 12, 24])
@@ -177,7 +194,7 @@ def package_drf(args=None):
     parser = argparse.ArgumentParser(
         description='Package Digital RF for PSWS upload'
     )
-    parser.add_argument('--data-root', required=True, help='Data root directory')
+    parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     parser.add_argument('--date', required=True, help='Date to package')
     parser.add_argument('--callsign', required=True, help='Station callsign')
     parser.add_argument('--grid', required=True, help='Grid square')
@@ -221,7 +238,7 @@ def upload(args=None):
     parser = argparse.ArgumentParser(
         description='Upload to PSWS repository'
     )
-    parser.add_argument('--data-root', required=True, help='Data root directory')
+    parser.add_argument('--data-root', default='/var/lib/grape-recorder', help='Data root directory (default: /var/lib/grape-recorder)')
     parser.add_argument('--date', help='Date to upload (default: yesterday)')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
