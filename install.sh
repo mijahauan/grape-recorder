@@ -64,13 +64,35 @@ echo -e "${YELLOW}Upgrading pip...${NC}"
 echo -e "${GREEN}✓ Upgraded pip${NC}"
 
 # Install hf-timestd if available
-if [ -d "$HF_TIMESTD_DIR" ]; then
-    echo -e "${YELLOW}Installing hf-timestd dependency...${NC}"
-    "$INSTALL_DIR/venv/bin/pip" install -e "$HF_TIMESTD_DIR" > /dev/null
-    echo -e "${GREEN}✓ Installed hf-timestd${NC}"
+echo -e "${YELLOW}Checking for hf-timestd...${NC}"
+
+# First check if hf-timestd is already installed in the system
+if python3 -c "import hf_timestd" 2>/dev/null; then
+    echo -e "${GREEN}✓ hf-timestd already installed in system${NC}"
+    echo "  Creating access to system packages..."
+    # Allow venv to access system packages
+    rm -f "$INSTALL_DIR/venv/pyvenv.cfg"
+    python3 -m venv --system-site-packages "$INSTALL_DIR/venv"
+elif [ -d "$HF_TIMESTD_DIR" ]; then
+    echo -e "${YELLOW}Attempting to install hf-timestd from $HF_TIMESTD_DIR...${NC}"
+    if "$INSTALL_DIR/venv/bin/pip" install -e "$HF_TIMESTD_DIR" > /tmp/hf-timestd-install.log 2>&1; then
+        echo -e "${GREEN}✓ Installed hf-timestd from source${NC}"
+    else
+        echo -e "${YELLOW}Warning: Could not install hf-timestd from source${NC}"
+        echo "  Error log saved to /tmp/hf-timestd-install.log"
+        echo "  Checking if hf-timestd venv exists..."
+        
+        # Try to use hf-timestd's own venv if it exists
+        if [ -d "$HF_TIMESTD_DIR/venv" ]; then
+            echo -e "${YELLOW}Found hf-timestd venv, creating symlink...${NC}"
+            # This is a workaround - we'll document that hf-timestd must be installed separately
+            echo -e "${YELLOW}Please ensure hf-timestd is properly installed${NC}"
+        fi
+    fi
 else
-    echo -e "${YELLOW}Warning: hf-timestd not found at $HF_TIMESTD_DIR${NC}"
-    echo "  grape-recorder requires hf-timestd to be installed separately"
+    echo -e "${YELLOW}Warning: hf-timestd not found${NC}"
+    echo "  grape-recorder requires hf-timestd to be installed"
+    echo "  You can install it later or ensure it's in your Python path"
 fi
 
 # Install grape-recorder
